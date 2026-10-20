@@ -1,0 +1,15 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+.env
+*.log
+*.db
+state/
+token.json
+credentials.json
+*.bak-*
+.DS_Store
+BRIEF.md
