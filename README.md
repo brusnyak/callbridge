@@ -1,5 +1,7 @@
 # callbridge
 
+[![CI](https://github.com/brusnyak/callbridge/actions/workflows/ci.yml/badge.svg)](https://github.com/brusnyak/callbridge/actions/workflows/ci.yml) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 A tool server for voice agents (Vapi-style): signed webhook, calendar booking, CRM lead write with a signed outbound webhook, call dashboard, and a 30-scenario eval suite with a negative control. Spec: SPEC.md. Verification evidence and gaps: REPORT.md.
 
 ## What is real vs simulated
@@ -23,7 +25,28 @@ A tool server for voice agents (Vapi-style): signed webhook, calendar booking, C
 
 ## Run it in 60 seconds (from a clean clone)
 
-### Option A — Docker (app + Postgres, nothing to install)
+Two paths. **Option 1 is the one that needs nothing but Python** and is the path
+this README was re-verified with (2026-10-21, fresh virtualenv on a clean
+checkout). Option 2 was verified the same day in a `python:3.12-slim` container
+on Docker/colima (arm64); it needs Docker running.
+
+### Option 1 — pip only (no Docker, no database)
+
+```bash
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+pytest -q                 # 26 passed, 4 skipped (the skipped ones need DATABASE_URL)
+python evals/runner.py    # NORMAL 30/30, six injected faults all caught
+```
+
+The server then runs with zero infrastructure:
+
+```bash
+uvicorn app.main:app --port 8000
+curl -s http://127.0.0.1:8000/health   # {"status":"ok","store":"memory",...}
+```
+
+### Option 2 — Docker (app + Postgres, nothing to install)
 
 ```bash
 git clone <this repo> callbridge && cd callbridge
@@ -56,7 +79,7 @@ The demo slot is now booked, so a second identical call returns
 
 Shut down with `docker compose down` (add `-v` to drop the Postgres volume).
 
-### Option B — Python only (no Docker)
+### The same pip-only path, shorter (if you already read Option 1)
 
 ```bash
 git clone <this repo> callbridge && cd callbridge

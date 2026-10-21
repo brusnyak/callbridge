@@ -93,7 +93,7 @@ Defect found and fixed while verifying against a live Postgres (never visible on
   `.returning(bookings.c.id)` and checking whether a row came back.
 
 ### Not verified / known gaps (2026-10-21)
-- The GitHub Actions workflow has never run on github.com; the same steps were
+- The GitHub Actions workflow has since run on github.com: runs 39591933811 and 39592414333 (2026-10-21) both succeeded. The same steps were
   run locally in a `python:3.12-slim` container, which is not the same thing.
 - The Postgres path is verified against `postgres:16` in a local colima VM only.
   No managed Postgres, no backups, no failover, no concurrent-writer test.
