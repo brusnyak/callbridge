@@ -70,6 +70,8 @@ def latencies(lat: list[float]) -> tuple[float | None, float | None]:
 
 
 class Store:
+    kind = "memory"  # STORE=memory; the Postgres store lives in db_postgres.py
+
     def __init__(self, path: str | Path = "callbridge.db"):
         self.path = str(path)
         self.conn = sqlite3.connect(self.path, check_same_thread=False)
@@ -135,3 +137,10 @@ class Store:
         rows = self.conn.execute(
             "SELECT * FROM calls ORDER BY created_at DESC LIMIT 200").fetchall()
         return [dict(r) for r in rows]
+
+    def health(self) -> str:
+        try:
+            self.conn.execute("SELECT 1").fetchone()
+            return "ok"
+        except sqlite3.Error:
+            return "unavailable"

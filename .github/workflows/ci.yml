@@ -8,7 +8,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: lint (ruff)
+        run: ruff check .
       - run: python -m pytest -q
-      - name: eval suite (normal run must pass, every injected fault must be caught)
-        run: python evals/runner.py --negative
+      - name: eval suite (30 scenarios must pass; every injected fault must be caught)
+        run: |
+          python evals/runner.py --negative | tee eval.out
+          normal=$(sed -n 's/^NORMAL: \([0-9]*\)\/.*/\1/p' eval.out | head -1)
+          caught=$(grep -c -- '-> caught' eval.out || true)
+          echo "scenarios passed: ${normal:-0}/30, faults caught: ${caught}/6"
+          test "${normal:-0}" -ge 30
+          test "${caught:-0}" -ge 6

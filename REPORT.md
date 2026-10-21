@@ -46,3 +46,63 @@ Checked and OK: constant-time compare (hmac.compare_digest), idempotency on even
 - Lead `note` stores the first 500 chars of the transcript raw, which may contain PII; lead `name` is stored raw by design.
 - Injection guard is a regex list; novel phrasings pass (scored only on the 3 scripted cases).
 - CI workflow written but never run on GitHub. Eval scenarios are scripted by the same side that wrote the app: they show regression protection, not real-call quality. Latency numbers are recorded inputs, not measured.
+
+## 2026-10-21: packaging pass (Docker, Postgres store, CI gate, pinned deps)
+
+Machine: Mac (arm64), local venvs on Python 3.13.2; **no Python 3.12 on this
+machine**, so CI/Docker parity was checked with a `python:3.12-slim` container.
+Docker: colima VM (Ubuntu 24.04, Docker 29.2.1).
+
+Commands and outputs:
+
+```
+$ pip install -r requirements.txt -r requirements-dev.txt      # clean venv, pinned
+$ python -m pytest -q
+26 passed, 4 skipped, 1 warning in 2.05s
+$ python evals/runner.py
+NORMAL: 30/30 (100.0%) dims={'tool_args': '4/4', 'duplicate': '2/2', 'guardrail': '3/3', 'auth': '2/2'}
+NEGATIVE skip-signature: 29/30 -> caught
+NEGATIVE no-idempotency: 28/30 -> caught
+NEGATIVE no-conflict-check: 29/30 -> caught
+NEGATIVE wrong-tool-args: 26/30 -> caught
+NEGATIVE no-guardrail: 27/30 -> caught
+NEGATIVE trust-payload-booking: 19/30 -> caught
+$ ruff check .
+All checks passed!
+
+$ docker compose up -d --build          # app + postgres:16, both "healthy"
+$ curl -s http://127.0.0.1:8000/health
+{"status":"ok","store":"postgres","db":"ok"}
+$ curl -s -X POST http://127.0.0.1:8000/vapi/webhook -H 'Content-Type: application/json' \
+    -H "X-Callbridge-Signature: sha256=$SIG" -d "$BODY"
+{"ok":true,"duplicate":false,"result":{"ok":true,"tool":"book_appointment","booking_id":"bk_7c05c32b","start":"2026-10-20T10:00:00+02:00"}}
+# replay -> {"duplicate":true, same booking_id}; same slot, new event -> "conflict: slot already booked";
+# bad signature -> 401
+```
+
+CI mirror (python:3.12-slim, exactly the ci.yml steps):
+`ruff check .` -> All checks passed; `pytest -q` -> 26 passed, 4 skipped;
+eval gate -> "scenarios passed: 30/30, faults caught: 6/6" (exit 0).
+With `DATABASE_URL` set to the compose DB: `pytest -q` -> **30 passed** (26 unit + 4 Postgres).
+
+Defect found and fixed while verifying against a live Postgres (never visible on SQLite):
+- `app/db_postgres.py` `save_booking` used `result.rowcount > 0` to detect a
+  duplicate `event_id`. psycopg reports **rowcount = -1** for
+  `INSERT ... ON CONFLICT DO NOTHING`, so every Postgres booking returned
+  "duplicate booking blocked" even though the row was written. Fixed with
+  `.returning(bookings.c.id)` and checking whether a row came back.
+
+### Not verified / known gaps (2026-10-21)
+- The GitHub Actions workflow has never run on github.com; the same steps were
+  run locally in a `python:3.12-slim` container, which is not the same thing.
+- The Postgres path is verified against `postgres:16` in a local colima VM only.
+  No managed Postgres, no backups, no failover, no concurrent-writer test.
+- The Postgres store has no migration story: tables are created with
+  `metadata.create_all()` on startup, so a schema change needs a manual step.
+- `docker compose` was verified on colima/Docker 29.2.1 on arm64 only; not on
+  Docker Desktop, not on x86_64.
+- The image was built and run as a non-root user (uid 10001); no image scan,
+  no SBOM, no signed image.
+- Everything in "What is real vs simulated" (README) still holds: no real
+  Vapi, no real call, no real Google Calendar, no real CRM.
+

@@ -1,7 +1,7 @@
 """Calendar adapters: fake in-memory (used) + Google (documented, not executed)."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("Europe/Bratislava")

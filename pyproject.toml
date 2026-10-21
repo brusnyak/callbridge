@@ -1,0 +1,28 @@
+[project]
+name = "callbridge"
+version = "0.1.0"
+description = "Tool server for voice agents (Vapi-style): signed webhook, calendar booking, CRM lead write, call dashboard, eval suite with negative control"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+authors = [{ name = "Yegor Brusnyak", email = "210753353+brusnyak@users.noreply.github.com" }]
+keywords = ["voice-agent", "fastapi", "webhook", "hmac", "evals"]
+dependencies = [
+    "fastapi==0.156.8",
+    "uvicorn==0.54.0",
+    "sqlalchemy==2.1.5",
+    "psycopg[binary]==3.3.6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.1.1", "httpx==0.28.1", "ruff==0.17.1"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# Small, explicit rule set: pyflakes errors + pycodestyle basics.
+# Ruff's built-in default set is much wider and would rewrite the author's
+# style; keep the CI gate deterministic instead.
+select = ["E4", "E7", "E9", "F"]

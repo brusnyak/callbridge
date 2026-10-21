@@ -1,0 +1,32 @@
+# Local dev only. These are placeholders, not secrets.
+# Override in your shell or a .env file (git-ignored) for anything real.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-callbridge}
+      POSTGRES_USER: ${POSTGRES_USER:-callbridge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-callbridge-local-dev}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-callbridge} -d ${POSTGRES_DB:-callbridge}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    environment:
+      STORE: postgres
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-callbridge}:${POSTGRES_PASSWORD:-callbridge-local-dev}@db:5432/${POSTGRES_DB:-callbridge}
+      # Local dev placeholder. The webhook answers 503 while this is unset.
+      CALLBRIDGE_SECRET: ${CALLBRIDGE_SECRET:-dev-only-change-me}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

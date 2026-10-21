@@ -8,8 +8,9 @@ reliability, not the persona.
 
 In: webhook receiver with HMAC auth + idempotency, calendar booking
 (fake in-memory + documented-not-executed Google adapter), CRM lead
-write (SQLite + signed outbound webhook), dashboard (HTML + JSON),
-30-scenario eval suite with scoreboard + negative control, CI.
+write (SQLite by default, Postgres optional + signed outbound webhook),
+dashboard (HTML + JSON), 30-scenario eval suite with scoreboard +
+negative control, CI, Docker image + compose (app + Postgres 16).
 
 Out: real Vapi/Twilio calls, real Google OAuth execution, real CRM
 delivery, frontend framework, auth beyond shared-secret HMAC.
@@ -32,8 +33,18 @@ delivery, frontend framework, auth beyond shared-secret HMAC.
   p50/p95 latency. Plain HTML/CSS, no CDN.
 - `GET /api/calls` — same rows as JSON.
 - `GET /healthz` — liveness.
+- `GET /health` — `{"status":"ok","store":"memory|postgres","db":"ok|unavailable"}`.
 
-## Data model (SQLite)
+## Stores
+
+`STORE=memory` (default) = SQLite store `app/db.py`; `STORE=postgres` =
+SQLAlchemy 2.x Core store `app/db_postgres.py` against `DATABASE_URL`.
+Same table set and the same method interface in both; the unit suite and
+the eval suite run on the memory store, so they need no database.
+Tables are created with `metadata.create_all()` at startup — no migration
+framework.
+
+## Data model (SQLite default, Postgres optional)
 
 - `calls(id, caller_hash, started_at, outcome, booking_id, p50_ms,
   p95_ms, transcript_len, created_at)`

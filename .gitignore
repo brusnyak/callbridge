@@ -11,5 +11,6 @@ state/
 token.json
 credentials.json
 *.bak-*
+eval.out
 .DS_Store
 BRIEF.md

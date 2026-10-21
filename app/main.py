@@ -27,8 +27,25 @@ INJECTION_PATTERNS = re.compile(
 )
 
 app = FastAPI(title="callbridge")
-store = Store(os.environ.get("CALLBRIDGE_DB", "callbridge.db"))
 calendar = FakeCalendar()
+
+
+def build_store():
+    """STORE=memory (default, SQLite) or STORE=postgres (SQLAlchemy 2.x).
+
+    The Postgres store is imported lazily so the memory path needs no
+    database driver at all.
+    """
+    kind = os.environ.get("STORE", "memory").strip().lower()
+    if kind == "postgres":
+        from .db_postgres import PostgresStore
+        return PostgresStore(os.environ.get("DATABASE_URL", ""))
+    if kind != "memory":
+        raise RuntimeError(f"unknown STORE={kind!r}; use 'memory' or 'postgres'")
+    return Store(os.environ.get("CALLBRIDGE_DB", "callbridge.db"))
+
+
+store = build_store()
 
 
 def verify(secret: str, body: bytes, sig: str | None) -> bool:
@@ -46,6 +63,16 @@ def get_secret() -> str:
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
+
+
+@app.get("/health")
+def health():
+    """Liveness + which store is in use + whether the database answers."""
+    try:
+        db_state = store.health()
+    except Exception:
+        db_state = "unavailable"
+    return {"status": "ok", "store": getattr(store, "kind", "memory"), "db": db_state}
 
 
 @app.post("/vapi/webhook")
@@ -164,7 +191,10 @@ def api_calls():
 @app.get("/calls", response_class=HTMLResponse)
 def calls_page():
     rows = store.list_calls()
-    e = lambda v: html.escape(str(v))  # FIX: payload strings were rendered unescaped (XSS)
+
+    def e(v):
+        # FIX: payload strings were rendered unescaped (XSS)
+        return html.escape(str(v))
     trs = "\n".join(
         f"<tr><td>{e(r['started_at'])}</td><td>{e(r['caller_hash'])}</td>"
         f"<td>{e(r['outcome'])}</td><td>{e(r.get('booking_id') or '—')}</td>"
