@@ -45,7 +45,7 @@ Checked and OK: constant-time compare (hmac.compare_digest), idempotency on even
 - Single-process SQLite, no concurrency test: two simultaneous deliveries of the same event.id could race past the cache (booking UNIQUE(event_id) is the backstop for bookings; leads could duplicate).
 - Lead `note` stores the first 500 chars of the transcript raw, which may contain PII; lead `name` is stored raw by design.
 - Injection guard is a regex list; novel phrasings pass (scored only on the 3 scripted cases).
-- CI workflow written but never run on GitHub. Eval scenarios are scripted by the same side that wrote the app: they show regression protection, not real-call quality. Latency numbers are recorded inputs, not measured.
+- CI workflow runs on GitHub Actions (last two runs on 2026-10-21 succeeded). Eval scenarios are scripted by the same side that wrote the app: they show regression protection, not real-call quality. Latency numbers are recorded inputs, not measured.
 
 ## 2026-10-21: packaging pass (Docker, Postgres store, CI gate, pinned deps)
 
